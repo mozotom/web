@@ -5,7 +5,7 @@ var result;
 var actionEvent = "onclick";
 var autoExpand = true;
 var idN = 0;
-var maxThreadNamesDisplay = 20;
+var maxThreadNamesDisplay = 10;
 
 function getId() {
   return "id" + (++idN);
