@@ -1,0 +1,78 @@
+body {
+  margin: 0px;
+  height: 100%;
+}
+
+#header {
+  height: 85px;
+}
+
+@media all and (orientation:portrait) {
+	.results {
+		height: calc((100vh - 105px) / 2);
+		width: 100%;
+	}
+}
+
+@media all and (orientation:landscape) {
+	.results {
+		position: absolute;
+		width: 50%;
+		height: calc(100vh - 85px);
+	}
+	
+	#results {
+		top: 85px;
+		left: 0px;
+	}
+	
+	#details {
+		top: 85px;
+		left: 50%;
+	}
+}
+
+.results {
+  overflow:scroll;
+}
+
+.global-summary {
+  color: black;
+  font-weight: bold;
+  font-size: 150%
+}
+
+.section-summary {
+  color: red;
+  font-weight: bold;
+  font-size: 125%
+}
+
+.classes {
+  color: blue;
+}
+
+.threads {
+  color: grey;
+  font-size: 75%
+}
+
+.initial-call {
+  color: red;
+}
+
+.emptyLineV {
+  border-right-width: 1px;
+  border-right-color: #CFCFCF;
+  border-right-style: solid;
+}
+
+table, tbody, tr, th, td {
+  border-collapse: collapse;
+  margin: 0px;
+  padding: 0px;
+}
+
+tr, th, td {
+  height: 1.33em;
+}

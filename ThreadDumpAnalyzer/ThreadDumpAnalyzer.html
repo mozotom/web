@@ -1,0 +1,33 @@
+<html>
+<head>
+  <script type="text/javascript" src="ThreadDumpAnalyzer.js"></script>
+  <link rel="stylesheet" type="text/css" href="ThreadDumpAnalyzer.css" />
+</head>
+<body>
+  <div id="header">
+  <form onsubmit="analyze(); return false;">
+  <table>
+    <tr>
+      <th>Stack Trace</th>
+      <th>Thread Filter</th>
+      <th>Class Filter</th>
+      <th></th>
+      <th>Auto-refresh</th>
+    </tr>
+    <tr>
+      <td><textarea id="st"></textarea></td>
+      <td><input type="input" id="threadName" value="" /></td>
+      <td><input type="input" id="className" value="" /></td>
+      <td><input type="submit" value="Analyze" /></td>
+      <td>
+        <input type="radio" name="actionEvent" onclick="window.actionEvent='onmouseover'; refreshResult()">Yes</input>
+        <input type="radio" name="actionEvent" onclick="window.actionEvent='onclick'; refreshResult()" checked="checked">No</input>
+      </td>
+    </tr>
+  </table>
+  </form>
+  </div>  
+  <div class="results" id="result"></div>
+  <div class="results" id="details"></div>
+</body>
+</html>
