@@ -5,6 +5,7 @@ var result;
 var actionEvent = "onclick";
 var autoExpand = true;
 var idN = 0;
+var maxThreadNamesDisplay = 20;
 
 function getId() {
   return "id" + (++idN);
@@ -17,10 +18,40 @@ function analyze() {
   
   result = processStackTraces(file, threadName, className);
   refreshResult();
+  document.getElementById("details").innerHTML = ""; 
 }
 
 function refreshResult() {
   document.getElementById("result").innerHTML = prettyResult(result);
+}
+
+function getDisplayThreadNames(threadNames) {
+  return threadNames.length>maxThreadNamesDisplay+1?threadNames.slice(0, maxThreadNamesDisplay).join("\n") + "\n+ " + (threadNames.length - maxThreadNamesDisplay) + " threads...":threadNames.join("\n");
+}
+
+function showCallTreeRoot(callLinesE, threadNamesE) {
+  var threadNames = unescape(threadNamesE).split("\n");
+  var callLines = unescape(callLinesE).split(",");
+  var n = callLines.length;
+
+  var r = "<table>";
+
+  var q = getCallsRowsHTML(callLines[0], callLines.slice(1,n), threadNames, -1);
+  if (q != "") {
+    r += "<tr><td class=\"emptyLineV\"></td><td><table>" + q + "</table></td></tr>";
+  }
+
+  for (var i in callLines) {
+    r += "<tr class=\"base-call\" title='" + getDisplayThreadNames(threadNames) + "'><td>" + threadNames.length + ":</td><td>" + callLines[i] + "</td></tr>";
+  }
+
+  var s = getCallsRowsHTML(callLines[n-1], callLines.slice(0,n-1), threadNames, 1);
+  if (s != "") {
+    r += "<tr><td class=\"emptyLineV\"></td><td><table>" + s + "</table></td></tr>";
+  }
+  
+  r += "</table>";
+  document.getElementById('details').innerHTML = r;
 }
 
 function showCallTree(callLineE, threadNamesE, containerId, step, parentsE) {
@@ -40,7 +71,7 @@ function showCallTree(callLineE, threadNamesE, containerId, step, parentsE) {
     }
   }
   
-  r += "<tr class=\"initial-call\" onclick=\"showCallTree('" + callLineE + "', '" + threadNamesE + "', '" + containerId + "', " + step + ", '" + parentsE + "')\"><td>" + threadNames.length + ":</td><td>" + call + "</td></tr>";
+  r += "<tr class=\"initial-call\" title='" + getDisplayThreadNames(threadNames) + "' onclick=\"showCallTree('" + callLineE + "', '" + threadNamesE + "', '" + containerId + "', " + step + ", '" + parentsE + "')\"><td>" + threadNames.length + ":</td><td>" + call + "</td></tr>";
 
   if (step != -1) {
     var s = getCallsRowsHTML(call, parents, threadNames, 1);
@@ -57,13 +88,32 @@ function getCallsRowsHTML(call, parents, threadNames, step) {
   var stepCalls = {};
   var stacks = result["stacks"];
   var r = "";
-  parents.push(call);
+  
+  if (step == 1) {
+    parents.push(call);
+  } else {
+    parents.unshift(call);
+  }
   
   for (var k in threadNames) {
     var calls = stacks[threadNames[k]];
-    var i = calls.indexOf(call) + step;
-    if ((i >= 0) && (i<calls.length)) {
-      if (parents.indexOf(calls[i]) == -1) {
+    var i = 0;
+    while (i + parents.length <= calls.length) {
+      if (isPartEqual(parents, calls, i) && ((step == 1) || (i>0))) {
+        break;
+      } else {
+        ++i
+      }
+    }
+    
+    if (i + parents.length <= calls.length) {
+      if (step == 1) {
+        i += parents.length;
+      } else {
+        --i;
+      }
+
+      if ((i >= 0) && (i<calls.length)) {
         if (!(stepCalls[calls[i]])) {
           stepCalls[calls[i]] = [];
         }
@@ -79,7 +129,7 @@ function getCallsRowsHTML(call, parents, threadNames, step) {
     var stepCall = stepCallsKeys[k]
     var threadCount = stepCalls[stepCall].length;
     var id = getId();
-    r += "<tr><td><table id=" + id + "><tr onclick=\"showCallTree('" + escape(stepCall) + "', '" + escape(stepCalls[stepCall].join('\n')) + "', '" + id + "', " + step + ", '" + escape(parents) + "')\"><td>" + threadCount + ":</td><td>" + stepCall + "</td></tr></table></td></tr>"
+    r += "<tr><td><table id=" + id + "><tr title='" + getDisplayThreadNames(stepCalls[stepCall]) + "' onclick=\"showCallTree('" + escape(stepCall) + "', '" + escape(stepCalls[stepCall].join('\n')) + "', '" + id + "', " + step + ", '" + escape(parents) + "')\"><td>" + threadCount + ":</td><td>" + stepCall + "</td></tr></table></td></tr>"
 
     if ((autoExpand) && (stepCallsKeys.length == 1)) {
       setTimeout(function() { showCallTree(escape(stepCall), escape(stepCalls[stepCall].join('\n')), id, step, escape(parents)); }, 1); 
@@ -90,7 +140,6 @@ function getCallsRowsHTML(call, parents, threadNames, step) {
 }
 
 function showThread(threadNameE, callsStrE) {
-  var n = 20;
   var r = "<table>";
 
   var threadName = unescape(threadNameE);
@@ -108,8 +157,8 @@ function showThread(threadNameE, callsStrE) {
     } else {
       var c = getColor((threadNames.length - 1) / maxCallFreq);
     }
-    var displayNames = threadNames.length>n+1?threadNames.slice(0, n).join("\n") + "\n+ " + (threadNames.length - n) + " threads...":threadNames.join("\n")
-	r += "<tr class=\"classes\"><td onclick=\"showCallTree('" + escape(calls[i]) + "', '" + escape(threadNames.join('\n')) + "', 'details')\" title='" + displayNames + "' style=\"color: " + c + "\">" + calls[i] + "</td></tr>";
+
+    r += "<tr class=\"classes\"><td onclick=\"showCallTreeRoot('" + escape(calls[i]) + "', '" + escape(threadNames.join('\n')) + "')\" style=\"color: " + c + "\">" + calls[i] + "</td></tr>";
   }
   
   r += "</table>";
@@ -137,7 +186,7 @@ function prettyResult(result) {
     var calls = callsStr.split(",");
 	r += "<tr class=\"section-summary\"><td># StackTrace length: " + calls.length + ", Number of threads: " + names.length + "</td></tr>";
 	for (var i in calls) {
-	  r += "<tr class=\"classes\"><td " + actionEvent + "=\"showCallTree('" + escape(calls[i]) + "', '" + escape(names.join('\n')) + "', 'details')\">" + calls[i] + "</td></tr>";
+	  r += "<tr class=\"classes\"><td " + actionEvent + "=\"showCallTreeRoot('" + escape(calls) + "', '" + escape(names.join('\n')) + "')\">" + calls[i] + "</td></tr>";
 	}
 	for (var i in names) {
 	  r += "<tr class=\"threads\"><td " + actionEvent + "=\"showThread('" + escape(names[i]) + "', '" + escape(callsStr) + "')\">" + names[i] + "</td></tr>";

@@ -66,6 +66,10 @@ body {
   color: red;
 }
 
+.base-call {
+  color: blue;
+}
+
 .emptyLineV {
   border-right-width: 1px;
   border-right-color: #CFCFCF;

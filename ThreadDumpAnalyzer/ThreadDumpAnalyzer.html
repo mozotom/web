@@ -5,7 +5,7 @@
   <script type="text/javascript" src="ThreadDumpAnalyzer.js"></script>
   <link rel="stylesheet" type="text/css" href="ThreadDumpAnalyzer.css" />
 </head>
-<body>
+<body onload="analyze()">
   <div id="header">
   <form onsubmit="analyze(); return false;">
   <table id="headerTable">
@@ -18,7 +18,24 @@
       <th></th>
     </tr>
     <tr>
-      <td><textarea id="st"></textarea></td>
+      <td><textarea id="st">"T1"
+   java.lang.Thread.State: RUNNABLE
+	at p1.c1.m1(Native Method)
+	at p1.c1.m1(Native Method)
+	at p1.c1.m1(Native Method)
+	at p0.c0.m0
+
+"T2"
+   java.lang.Thread.State: RUNNABLE
+	at p1.c1.m1(Native Method)
+	at p1.c1.m1(Native Method)
+	at p0.c0.m0
+
+"T3"
+   java.lang.Thread.State: RUNNABLE
+	at p1.c1.m1(Native Method)
+	at p0.c0.m0
+	</textarea></td>
       <td><input type="input" id="threadName" value="" /></td>
       <td><input type="input" id="className" value="" /></td>
       <td>
