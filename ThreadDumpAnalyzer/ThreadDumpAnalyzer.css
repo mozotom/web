@@ -81,3 +81,18 @@ table, tbody, tr, th, td {
 tr, th, td {
   height: 1.33em;
 }
+
+#headerTable td {
+  margin: 2px;
+  padding: 2px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-collapse: collapse;
+  border-width: 1px;
+  border-style: solid;
+}
+
+td#analyzeButton {
+  border-width: 0px;
+  border-style: none;
+}

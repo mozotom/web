@@ -8,23 +8,28 @@
 <body>
   <div id="header">
   <form onsubmit="analyze(); return false;">
-  <table>
+  <table id="headerTable">
     <tr>
       <th>Stack Trace</th>
       <th>Thread Filter</th>
       <th>Class Filter</th>
-      <th></th>
       <th>Auto-refresh</th>
+      <th>Auto-expand</th>
+      <th></th>
     </tr>
     <tr>
       <td><textarea id="st"></textarea></td>
       <td><input type="input" id="threadName" value="" /></td>
       <td><input type="input" id="className" value="" /></td>
-      <td><input type="submit" value="Analyze" /></td>
       <td>
         <input type="radio" name="actionEvent" onclick="window.actionEvent='onmouseover'; refreshResult()">Yes</input>
         <input type="radio" name="actionEvent" onclick="window.actionEvent='onclick'; refreshResult()" checked="checked">No</input>
       </td>
+      <td>
+        <input type="radio" name="autoExpand" onclick="window.autoExpand=true; refreshResult()" checked="checked">Yes</input>
+        <input type="radio" name="autoExpand" onclick="window.autoExpand=false; refreshResult()">No</input>
+      </td>
+      <td id="analyzeButton"><input type="submit" value="Analyze" /></td>
     </tr>
   </table>
   </form>

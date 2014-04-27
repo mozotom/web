@@ -3,6 +3,7 @@
 
 var result;
 var actionEvent = "onclick";
+var autoExpand = true;
 var idN = 0;
 
 function getId() {
@@ -79,6 +80,10 @@ function getCallsRowsHTML(call, parents, threadNames, step) {
     var threadCount = stepCalls[stepCall].length;
     var id = getId();
     r += "<tr><td><table id=" + id + "><tr onclick=\"showCallTree('" + escape(stepCall) + "', '" + escape(stepCalls[stepCall].join('\n')) + "', '" + id + "', " + step + ", '" + escape(parents) + "')\"><td>" + threadCount + ":</td><td>" + stepCall + "</td></tr></table></td></tr>"
+
+    if ((autoExpand) && (stepCallsKeys.length == 1)) {
+      setTimeout(function() { showCallTree(escape(stepCall), escape(stepCalls[stepCall].join('\n')), id, step, escape(parents)); }, 1); 
+    }
   }
   
   return r;
@@ -104,7 +109,7 @@ function showThread(threadNameE, callsStrE) {
       var c = getColor((threadNames.length - 1) / maxCallFreq);
     }
     var displayNames = threadNames.length>n+1?threadNames.slice(0, n).join("\n") + "\n+ " + (threadNames.length - n) + " threads...":threadNames.join("\n")
-	r += "<tr class=\"classes\"><td title='" + displayNames + "' style=\"color: " + c + "\">" + calls[i] + "</td></tr>";
+	r += "<tr class=\"classes\"><td onclick=\"showCallTree('" + escape(calls[i]) + "', '" + escape(threadNames.join('\n')) + "', 'details')\" title='" + displayNames + "' style=\"color: " + c + "\">" + calls[i] + "</td></tr>";
   }
   
   r += "</table>";
