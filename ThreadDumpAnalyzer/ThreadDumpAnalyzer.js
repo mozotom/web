@@ -1,3 +1,6 @@
+// <!-- Author: Tomasz Mozolewski @2014 -->
+// <!-- https://github.com/mozotom/web/tree/master/ThreadDumpAnalyzer -->
+
 var result;
 var actionEvent = "onclick";
 var idN = 0;
