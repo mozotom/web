@@ -1,28 +1,34 @@
 // <!-- Author: Tomasz Mozolewski @2014 -->
 // <!-- https://github.com/mozotom/web/tree/master/ThreadDumpAnalyzer -->
 
-var result;
+var result = new Object();
 var actionEvent = "onclick";
 var autoExpand = true;
 var idN = 0;
 var maxThreadNamesDisplay = 10;
+var updateMillis = 1000;
 
 function getId() {
   return "id" + (++idN);
 }
 
 function analyze() {
-  var file = document.getElementById("st").value;
-  var threadName = document.getElementById("threadName").value || ".*"; 
-  var className = document.getElementById("className").value || ".*";
-  
-  result = processStackTraces(file, threadName, className);
-  refreshResult();
-  document.getElementById("details").innerHTML = ""; 
+  result.completed = "";
+  updateStatus("Starting", 1, 0, 7, true, analyzeIt);
+}
+
+function analyzeIt() {
+  document.getElementById("analyzeButton").style.visibility = "hidden";
+  result.file = document.getElementById("st").value;
+  result.threadName = document.getElementById("threadName").value || ".*"; 
+  result.className = document.getElementById("className").value || ".*";
+  updateStatus("Started", 1, 0, 7, false, processStackTraces);
 }
 
 function refreshResult() {
   document.getElementById("result").innerHTML = prettyResult(result);
+  document.getElementById("details").innerHTML = "";
+  document.getElementById("analyzeButton").style.visibility = "visible";
 }
 
 function getDisplayThreadNames(threadNames) {
@@ -132,7 +138,7 @@ function getCallsRowsHTML(call, parents, threadNames, step) {
     r += "<tr><td><table id=" + id + "><tr title='" + getDisplayThreadNames(stepCalls[stepCall]) + "' onclick=\"showCallTree('" + escape(stepCall) + "', '" + escape(stepCalls[stepCall].join('\n')) + "', '" + id + "', " + step + ", '" + escape(parents) + "')\"><td>" + threadCount + ":</td><td>" + stepCall + "</td></tr></table></td></tr>"
 
     if ((autoExpand) && (stepCallsKeys.length == 1)) {
-      setTimeout(function() { showCallTree(escape(stepCall), escape(stepCalls[stepCall].join('\n')), id, step, escape(parents)); }, 1); 
+      setTimeout(function() { showCallTree(escape(stepCall), escape(stepCalls[stepCall].join('\n')), id, step, escape(parents)); }, 0); 
     }
   }
   
@@ -175,12 +181,12 @@ function getColor(v) {
 function prettyResult(result) {
   var stacks = result["stacks"];
   var stackParts = result["stackParts"];
-  var sortedKeys = result["sortedKeys"];
+  var keys = result["keys"];
   
   var r = "<table>";
   r += "<tr class=\"global-summary\"><td>### Total number of threads: " + Object.keys(stacks).length + "</td></tr>";
-  for (var k in sortedKeys) {
-    var callsStr = sortedKeys[k];
+  for (var k in keys) {
+    var callsStr = keys[k];
     var names = Object.keys(stackParts[callsStr]);
     names.sort;
     var calls = callsStr.split(",");
@@ -222,79 +228,156 @@ function isPartOf(part, whole) {
   return false;
 }
 
-function processStackTraces(file, threadName, className) {
-  var stacks = {};
-  var callFreq = {};
-  var maxCallFreq = 1;
+// message - message to show
+// pStage - percent of stage completed
+// iStage - stage number
+// nStage - number of stages
+// newLine - should new line be started after this one
+// callNext - call after update
+function updateStatus(message, pStage, iStage, nStage, newLine, callNext) {
+  var formattedMsg = new Date().toLocaleTimeString() + " " + "[" + iStage + "/" + nStage + "] " + Math.round(pStage * 100) + "% " + message;
+  document.getElementById("result").innerHTML = result.completed + formattedMsg;
+
+  if (newLine) result.completed += formattedMsg + "<br />"; 
+  if (callNext) setTimeout(callNext, 0);
+}
+
+function processStackTraces() {
+  result.stacks = {};
+  result.callFreq = {};
+  result.maxCallFreq = 1;
+  result.nextUpdate = Date.now();
+  updateStatus("Initialized", 1, 1, 7, true);
+  updateStatus("Reading input", 0, 2, 7, false, readFile);
+}
   
-  // Read file into stacks[name] = stack array
-  var lines = file.split("\n");
-  while (lines.length > 0) {
-    var line = lines.shift();
+// Read file into stacks[name] = stack array
+function readFile() {
+  result.lines = result.file.split("\n");
+  result.totalLinesCount = result.lines.length;
+  updateStatus("Parsing input", 0, 2, 7, false, readFileLine);
+}
+
+function readFileLine() {
+  while (result.lines.length > 0) {
+    var line = result.lines.shift();
     if (line.match(/^"/)) {
       var name = line;
-      line = lines.shift();
+      line = result.lines.shift();
       if (line.match(/java.lang.Thread.State:/)) {
         name += ' | ' + line;
-        line = lines.shift();
+        line = result.lines.shift();
       }
       
       var calls = [];
-      while ((lines.length > 0) && (line != "")) {
+      while ((result.lines.length > 0) && (line != "")) {
         if (isStackLine(line) && line.match(className)) {
           var stLine = cleanStackLine(line);
           calls.push(stLine);
-          if (name.match(threadName)) {
-	        if (!(callFreq[stLine])) {
-	          callFreq[stLine] = {};
+          if (name.match(result.threadName)) {
+	        if (!(result.callFreq[stLine])) {
+	          result.callFreq[stLine] = {};
 	        }
-	        callFreq[stLine][name] = true;
-	        maxCallFreq = Math.max(maxCallFreq, Object.keys(callFreq[stLine]).length); 
+	        result.callFreq[stLine][name] = true;
+	        result.maxCallFreq = Math.max(result.maxCallFreq, Object.keys(result.callFreq[stLine]).length); 
 	      }
         }
-        line = lines.shift();
+        line = result.lines.shift();
       }
       
-      if ((calls.length > 0) && (name.match(threadName))) {
-        stacks[name] = calls;
+      if ((calls.length > 0) && (name.match(result.threadName))) {
+        result.stacks[name] = calls;
       }
     }
+    if (result.nextUpdate < Date.now()) {
+      result.nextUpdate = Date.now() + updateMillis;
+      updateStatus("Parsing input", (result.totalLinesCount - result.lines.length) / result.totalLinesCount, 2, 7, false, readFileLine);      
+      return;
+    }
   }
+  if (result.lines.length == 0) updateStatus("Input parsed", 1, 2, 7, true, genStackParts);
+}
 
-  // Generate all stack parts
-  var stackParts = {};
-  for (var name in stacks) {
-    var calls = stacks[name];
+// Generate all stack parts
+function genStackParts() {
+  result.stackParts = {};
+  result.iter = Object.keys(result.stacks);
+  result.totalCount = result.iter.length;
+  updateStatus("Generating parts", 0, 3, 7, false, genStackPartsForThread);
+}
+
+function genStackPartsForThread() {
+  while (result.iter.length > 0) {
+    var name = result.iter.shift(); 
+    var calls = result.stacks[name];
     for (var i0=0; i0<calls.length; ++i0) {
       for (var i1=i0; i1<calls.length; ++i1) {
         var key = calls.slice(i0, i1+1);
-        if (!(stackParts[key])) {
-          stackParts[key] = {};
+        if (!(result.stackParts[key])) {
+          result.stackParts[key] = {};
         }
-        stackParts[key][name] = true
+        result.stackParts[key][name] = true
       }
     }
+    if (result.nextUpdate < Date.now()) {
+      result.nextUpdate = Date.now() + updateMillis;
+      updateStatus("Generating parts", (result.totalCount - result.iter.length) / result.totalCount, 3, 7, false, genStackPartsForThread);
+      return;
+    }
+  } 
+  if (result.iter.length == 0) {
+    updateStatus("Parts generated", 1, 3, 7, true);
+    updateStatus("Sorting parts", 0, 4, 7, false, sortStackPartKeys);
   }
+}
 
-  // Sort from most often occurring to least
-  var keys = Object.keys(stackParts);
-  keys.sort(function (a, b) { return (Object.keys(stackParts[a]).length * 1000 + a.split(",").length) - (Object.keys(stackParts[b]).length * 1000 + b.split(",").length); });
-  keys.reverse();
+// Sort from most often occurring to least
+function sortStackPartKeys() {
+  result.keys = Object.keys(result.stackParts);
+  result.keys.sort(function (a, b) { return (Object.keys(result.stackParts[a]).length * 1000 + a.split(",").length) - (Object.keys(result.stackParts[b]).length * 1000 + b.split(",").length); });
+  result.keys.reverse();
+  updateStatus("Parts sorted", 1, 4, 7, true, mapSetsOfThreads);
+}
 
-  // Map sets of threads to trace parts
-  var threadsToTraceParts = {};
-  for (var i in keys) {
-     var calls = keys[i];
-     var names = Object.keys(stackParts[calls]);
-     if (!(threadsToTraceParts[names])) {
-       threadsToTraceParts[names] = [];
-     }
-     threadsToTraceParts[names].push(calls);
+// Map sets of threads to trace parts
+function mapSetsOfThreads() {
+  result.threadsToTraceParts = {};
+  result.iter = Object.keys(result.keys);
+  result.totalCount = result.iter.length;
+  updateStatus("Mapping threads", 0, 5, 7, false, mapSetsOfThreadsIter);
+}
+
+function mapSetsOfThreadsIter() {
+  while (result.iter.length > 0) {
+    var i = result.iter.shift();
+    var calls = result.keys[i];
+    var names = Object.keys(result.stackParts[calls]);
+    if (!(result.threadsToTraceParts[names])) {
+      result.threadsToTraceParts[names] = [];
+    }
+    result.threadsToTraceParts[names].push(calls);
+    if (result.nextUpdate < Date.now()) {
+      result.nextUpdate = Date.now() + updateMillis;
+      updateStatus("Mapping threads", (result.totalCount - result.iter.length) / result.totalCount, 5, 7, false, mapSetsOfThreadsIter);
+      return;
+    }
   }
-  
-  // Remove stack traces that appear in the same sets of threads and are nested in longer trace
-  for (var names in threadsToTraceParts) {
-    var callsSets = threadsToTraceParts[names];
+  if (result.iter.length == 0) {
+    updateStatus("Mapping threads", 1, 5, 7, true, removeDuplicateNestedTraces);
+  }
+}
+
+// Remove stack traces that appear in the same sets of threads and are nested in longer trace
+function removeDuplicateNestedTraces() {
+  result.iter = Object.keys(result.threadsToTraceParts);
+  result.totalCount = result.iter.length;
+  updateStatus("Removing duplicates", 0, 6, 7, false, removeDuplicateNestedTracesIter);
+}
+
+function removeDuplicateNestedTracesIter() {
+  while (result.iter.length > 0) {  
+    var names = result.iter.shift();
+    var callsSets = result.threadsToTraceParts[names];
     if (callsSets.length > 1) {
       callsSets.sort(function (a, b) { return a.split(",").length - b.split(",").length });
       callsSets.reverse();
@@ -304,8 +387,8 @@ function processStackTraces(file, threadName, className) {
           var i = 0;
           while (i < callsSets.length) {
 	        if ((callsSets[i]) && (isPartOf(callsSets[i].split(","), calls.split(",")))) {
-	          delete stackParts[callsSets[i]];
-	          delete keys[keys.indexOf(callsSets[i])];
+	          delete result.stackParts[callsSets[i]];
+	          delete result.keys[result.keys.indexOf(callsSets[i])];
 	          delete callsSets[i];
             }
 	        ++i;
@@ -314,8 +397,14 @@ function processStackTraces(file, threadName, className) {
 	    calls = callsSets.shift();
       }
     }
+    if (result.nextUpdate < Date.now()) {
+      result.nextUpdate = Date.now() + updateMillis;
+      updateStatus("Removing duplicates", (result.totalCount - result.iter.length) / result.totalCount, 6, 7, false, removeDuplicateNestedTracesIter);
+      return;
+    }
   }
-  
-  return {"stacks": stacks, "stackParts": stackParts, "sortedKeys": keys, "callFreq": callFreq, "maxCallFreq": maxCallFreq};
+  if (result.iter.length == 0) {  
+    updateStatus("Duplicates removed", 1, 6, 7, true);
+    updateStatus("Analysis completed, generating page...", 0, 0, 7, false, refreshResult);
+  }
 }
-
